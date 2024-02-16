@@ -9,3 +9,8 @@ Simple enclosure to make it into a neat package.
 ![Enclosure](doc/finished.jpg)
 
 This version uses a nodeMCU esp32 module.
+
+BOM:  
+https://www.sensirion.com/products/catalog/SEN55  
+https://www.sparkfun.com/products/18079  
+https://en.wikipedia.org/wiki/NodeMCU or https://www.wemos.cc/en/latest/d1/d1_mini_3.1.0.html
