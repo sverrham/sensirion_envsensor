@@ -97,10 +97,12 @@ void printModuleVersions() {
     }
 }
 
+unsigned char serialNumber[32];
+
 void printSerialNumber() {
     uint16_t error;
     char errorMessage[256];
-    unsigned char serialNumber[32];
+    // unsigned char serialNumber[32];
     uint8_t serialNumberSize = 32;
 
     error = sen5x.getSerialNumber(serialNumber, serialNumberSize);
@@ -131,13 +133,215 @@ struct SensirionMeasurement
 WiFiClient wifiClient;
 MqttClient mqttClient(wifiClient);
 
+
+void publishMQTT(JsonDocument doc, String topic_dev) {
+    // Serialize the JSON document to a char buffer
+    char jsonBuffer[512];
+    serializeJson(doc, jsonBuffer);
+    const char* payload = jsonBuffer;
+    mqttClient.beginMessage(topic_dev);
+    mqttClient.print(payload);
+    mqttClient.endMessage();
+    Serial.println("Published message: "+ topic_dev + String(payload));
+}
+
+// My numeric sensor ID, you can change this to whatever suits your needs
+int sensorNumber = 1;
+// This is the topic this program will send the state of this device to.
+String stateTopic = "environment/sensirion/garage";
+
+void sendMQTTPm1p0DiscoveryMsg() {
+    JsonDocument doc;
+    JsonDocument devDoc;
+    String discoveryTopic = "homeassistant/sensor/env_sensor_" + String(sensorNumber) + "/pm1p0/config";
+
+    doc["name"] = "Env " + String(sensorNumber) + " Pm1p0";
+    doc["stat_t"]   = stateTopic;
+    doc["unit_of_meas"]   = "μg/mᵌ";
+    doc["sug_dsp_prc"] = 2; //         'suggested_display_precision',
+    doc["frc_upd"] = true;
+    doc["val_tpl"] = "{{ value_json.pm1p0|default(0) }}";
+
+    doc["uniq_id"] = 0;
+    devDoc["identifiers"] = serialNumber;
+    devDoc["manufacturer"] = "Sensirion";
+    devDoc["model"] = "SEN55";
+    devDoc["name"] = "Sensirion SEN55";
+
+    doc["device"] = devDoc;
+
+    publishMQTT(doc, discoveryTopic);
+}
+
+void sendMQTTPm2p5DiscoveryMsg() {
+    JsonDocument doc;
+    JsonDocument devDoc;
+    String discoveryTopic = "homeassistant/sensor/env_sensor_" + String(sensorNumber) + "/pm2p5/config";
+
+    doc["name"] = "Env " + String(sensorNumber) + " Pm2p5";
+    doc["stat_t"]   = stateTopic;
+    doc["unit_of_meas"]   = "μg/mᵌ";
+    doc["sug_dsp_prc"] = 2; //         'suggested_display_precision',
+    doc["frc_upd"] = true;
+    doc["val_tpl"] = "{{ value_json.pm2p5|default(0) }}";
+
+    doc["uniq_id"] = 1;
+    devDoc["identifiers"] = serialNumber;
+    devDoc["manufacturer"] = "Sensirion";
+    devDoc["model"] = "SEN55";
+    devDoc["name"] = "Sensirion SEN55";
+
+    doc["device"] = devDoc;
+
+    publishMQTT(doc, discoveryTopic);
+}
+
+void sendMQTTPm4p0DiscoveryMsg() {
+    JsonDocument doc;
+    JsonDocument devDoc;
+    String discoveryTopic = "homeassistant/sensor/env_sensor_" + String(sensorNumber) + "/pm4p0/config";
+
+    doc["name"] = "Env " + String(sensorNumber) + " Pm4p0";
+    doc["stat_t"]   = stateTopic;
+    doc["unit_of_meas"]   = "μg/mᵌ";
+    doc["sug_dsp_prc"] = 2; //         'suggested_display_precision',
+    doc["frc_upd"] = true;
+    doc["val_tpl"] = "{{ value_json.pm4p0|default(0) }}";
+
+    doc["uniq_id"] = 2;
+    devDoc["identifiers"] = serialNumber;
+    devDoc["manufacturer"] = "Sensirion";
+    devDoc["model"] = "SEN55";
+    devDoc["name"] = "Sensirion SEN55";
+
+    doc["device"] = devDoc;
+
+    publishMQTT(doc, discoveryTopic);
+}
+
+void sendMQTTPm10p0DiscoveryMsg() {
+    JsonDocument doc;
+    JsonDocument devDoc;
+    String discoveryTopic = "homeassistant/sensor/env_sensor_" + String(sensorNumber) + "/pm10p0/config";
+
+    doc["name"] = "Env " + String(sensorNumber) + " Pm10p0";
+    doc["stat_t"]   = stateTopic;
+    doc["unit_of_meas"]   = "μg/mᵌ";
+    doc["sug_dsp_prc"] = 2; //         'suggested_display_precision',
+    doc["frc_upd"] = true;
+    doc["val_tpl"] = "{{ value_json.pm10p0|default(0) }}";
+
+    doc["uniq_id"] = 3;
+    devDoc["identifiers"] = serialNumber;
+    devDoc["manufacturer"] = "Sensirion";
+    devDoc["model"] = "SEN55";
+    devDoc["name"] = "Sensirion SEN55";
+
+    doc["device"] = devDoc;
+
+    publishMQTT(doc, discoveryTopic);
+}
+
+void sendMQTTTemperatureDiscoveryMsg() {
+    JsonDocument doc;
+    JsonDocument devDoc;
+    String discoveryTopic = "homeassistant/sensor/env_sensor_" + String(sensorNumber) + "/temperature/config";
+
+    doc["name"] = "Env " + String(sensorNumber) + " Temperature";
+    doc["stat_t"]   = stateTopic;
+    doc["unit_of_meas"]   = "⁰C";
+    doc["sug_dsp_prc"] = 2; //         'suggested_display_precision',
+    doc["frc_upd"] = true;
+    doc["val_tpl"] = "{{ value_json.temperature|default(0) }}";
+
+    doc["uniq_id"] = 4;
+    devDoc["identifiers"] = serialNumber;
+    devDoc["manufacturer"] = "Sensirion";
+    devDoc["model"] = "SEN55";
+    devDoc["name"] = "Sensirion SEN55";
+
+    doc["device"] = devDoc;
+
+    publishMQTT(doc, discoveryTopic);
+}
+
+void sendMQTTHumidityDiscoveryMsg() {
+    JsonDocument doc;
+    JsonDocument devDoc;
+    String discoveryTopic = "homeassistant/sensor/env_sensor_" + String(sensorNumber) + "/humidity/config";
+
+    doc["name"] = "Env " + String(sensorNumber) + " Humidity";
+    doc["stat_t"]   = stateTopic;
+    doc["unit_of_meas"]   = "%RH";
+    doc["sug_dsp_prc"] = 2; //         'suggested_display_precision',
+    doc["frc_upd"] = true;
+    doc["val_tpl"] = "{{ value_json.humidity|default(0) }}";
+
+    doc["uniq_id"] = 5;
+    devDoc["identifiers"] = serialNumber;
+    devDoc["manufacturer"] = "Sensirion";
+    devDoc["model"] = "SEN55";
+    devDoc["name"] = "Sensirion SEN55";
+
+    doc["device"] = devDoc;
+
+    publishMQTT(doc, discoveryTopic);
+}
+
+
+void sendMQTTVocIndexDiscoveryMsg() {
+    JsonDocument doc;
+    JsonDocument devDoc;
+    String discoveryTopic = "homeassistant/sensor/env_sensor_" + String(sensorNumber) + "/vocindex/config";
+
+    doc["name"] = "Env " + String(sensorNumber) + " VocIndex";
+    doc["stat_t"]   = stateTopic;
+    doc["unit_of_meas"]   = "";
+    // doc["sug_dsp_prc"] = 2; //         'suggested_display_precision',
+    doc["frc_upd"] = true;
+    doc["val_tpl"] = "{{ value_json.vocIndex|default(0) }}";
+
+    doc["uniq_id"] = 6;
+    devDoc["identifiers"] = serialNumber;
+    devDoc["manufacturer"] = "Sensirion";
+    devDoc["model"] = "SEN55";
+    devDoc["name"] = "Sensirion SEN55";
+
+    doc["device"] = devDoc;
+
+    publishMQTT(doc, discoveryTopic);
+}
+
+
+void sendMQTTNoxIndexDiscoveryMsg() {
+    JsonDocument doc;
+    JsonDocument devDoc;
+    String discoveryTopic = "homeassistant/sensor/env_sensor_" + String(sensorNumber) + "/noxindex/config";
+
+    doc["name"] = "Env " + String(sensorNumber) + " NoxIndex";
+    doc["stat_t"]   = stateTopic;
+    doc["unit_of_meas"]   = "";
+    // doc["sug_dsp_prc"] = 2; //         'suggested_display_precision',
+    doc["frc_upd"] = true;
+    doc["val_tpl"] = "{{ value_json.noxIndex|default(0) }}";
+
+    doc["uniq_id"] = 7;
+    devDoc["identifiers"] = serialNumber;
+    devDoc["manufacturer"] = "Sensirion";
+    devDoc["model"] = "SEN55";
+    devDoc["name"] = "Sensirion SEN55";
+
+    doc["device"] = devDoc;
+
+    publishMQTT(doc, discoveryTopic);
+}
+
+
 void sendMQTT(SensirionMeasurement data) {
-    // Create a StaticJsonDocument with a capacity of 256 bytes
-    //StaticJsonDocument<256> doc;
     JsonDocument doc;
   
     // Send the sensirion data, to environment/sensirion/technical/
-    String topic_dev = "environment/sensirion/technicalroom";
+    // String topic_dev = "environment/sensirion/garage";
 
     doc["pm1p0"] = data.massConcentrationPm1p0;
     doc["pm2p5"] = data.massConcentrationPm2p5;
@@ -148,21 +352,13 @@ void sendMQTT(SensirionMeasurement data) {
     doc["vocIndex"] = data.vocIndex;
     doc["noxIndex"] = data.noxIndex;
 
-    // Serialize the JSON document to a char buffer
-    char jsonBuffer[256];
-    serializeJson(doc, jsonBuffer);
-    const char* payload = jsonBuffer;
-    //mqttClient.publish(topic_dev, payload);
-    mqttClient.beginMessage(topic_dev);
-    mqttClient.print(payload);
-    mqttClient.endMessage();
-    Serial.println("Published message: "+ topic_dev + String(payload));
+    publishMQTT(doc, stateTopic);
 }
 
 
 void reconnectMQTT() {
 
-      const char broker[] = "adg";
+    const char broker[] = "adg";
     int        port     = 1883;
 
     if (!mqttClient.connected()) {
@@ -170,6 +366,15 @@ void reconnectMQTT() {
             delay (10000);
             Serial.println("MQTT Not Connected");
         }
+        // Send discovery messages
+        sendMQTTPm1p0DiscoveryMsg();
+        sendMQTTPm2p5DiscoveryMsg();
+        sendMQTTPm4p0DiscoveryMsg();
+        sendMQTTPm10p0DiscoveryMsg();
+        sendMQTTTemperatureDiscoveryMsg();
+        sendMQTTHumidityDiscoveryMsg();
+        sendMQTTVocIndexDiscoveryMsg();
+        sendMQTTNoxIndexDiscoveryMsg();
     }
     Serial.println("MQTT Connected");
 }
