@@ -50,6 +50,9 @@
 
 SensirionI2CSen5x sen5x;
 
+String hw_version;
+String sw_version;
+
 void printModuleVersions() {
     uint16_t error;
     char errorMessage[256];
@@ -90,10 +93,14 @@ void printModuleVersions() {
         Serial.print(firmwareMinor);
         Serial.print(", ");
 
+        sw_version = String(firmwareMajor) + "." + String(firmwareMinor);
+
         Serial.print("Hardware: ");
         Serial.print(hardwareMajor);
         Serial.print(".");
         Serial.println(hardwareMinor);
+        
+        hw_version = String(hardwareMajor) + "." + String(hardwareMinor);
     }
 }
 
@@ -134,12 +141,12 @@ WiFiClient wifiClient;
 MqttClient mqttClient(wifiClient);
 
 
-void publishMQTT(JsonDocument doc, String topic_dev) {
+void publishMQTT(JsonDocument doc, String topic_dev, bool retain) {
     // Serialize the JSON document to a char buffer
     char jsonBuffer[512];
     serializeJson(doc, jsonBuffer);
     const char* payload = jsonBuffer;
-    mqttClient.beginMessage(topic_dev);
+    mqttClient.beginMessage(topic_dev, retain=retain);
     mqttClient.print(payload);
     mqttClient.endMessage();
     Serial.println("Published message: "+ topic_dev + String(payload));
@@ -150,9 +157,20 @@ int sensorNumber = 1;
 // This is the topic this program will send the state of this device to.
 String stateTopic = "environment/sensirion/garage";
 
+JsonDocument getDeviceInfo(){
+    JsonDocument devDoc;
+    devDoc["ids"] = serialNumber; //identifiers
+    devDoc["mf"] = "Sensirion"; //manufacturer
+    devDoc["mdl"] = "SEN55";  //model
+    devDoc["name"] = "Sensirion SEN55";
+    devDoc["hw"] = hw_version; //hw_version
+    devDoc["sw"] = sw_version; //sw_version
+
+    return devDoc;
+}
+
 void sendMQTTPm1p0DiscoveryMsg() {
     JsonDocument doc;
-    JsonDocument devDoc;
     String discoveryTopic = "homeassistant/sensor/env_sensor_" + String(sensorNumber) + "/pm1p0/config";
 
     doc["name"] = "Env " + String(sensorNumber) + " Pm1p0";
@@ -161,21 +179,14 @@ void sendMQTTPm1p0DiscoveryMsg() {
     doc["sug_dsp_prc"] = 2; //         'suggested_display_precision',
     doc["frc_upd"] = true;
     doc["val_tpl"] = "{{ value_json.pm1p0|default(0) }}";
+    doc["uniq_id"] = String(ESP.getChipId()) + "_pm1p0";
+    doc["device"] = getDeviceInfo();
 
-    doc["uniq_id"] = 0;
-    devDoc["identifiers"] = serialNumber;
-    devDoc["manufacturer"] = "Sensirion";
-    devDoc["model"] = "SEN55";
-    devDoc["name"] = "Sensirion SEN55";
-
-    doc["device"] = devDoc;
-
-    publishMQTT(doc, discoveryTopic);
+    publishMQTT(doc, discoveryTopic, true);
 }
 
 void sendMQTTPm2p5DiscoveryMsg() {
     JsonDocument doc;
-    JsonDocument devDoc;
     String discoveryTopic = "homeassistant/sensor/env_sensor_" + String(sensorNumber) + "/pm2p5/config";
 
     doc["name"] = "Env " + String(sensorNumber) + " Pm2p5";
@@ -185,20 +196,14 @@ void sendMQTTPm2p5DiscoveryMsg() {
     doc["frc_upd"] = true;
     doc["val_tpl"] = "{{ value_json.pm2p5|default(0) }}";
 
-    doc["uniq_id"] = 1;
-    devDoc["identifiers"] = serialNumber;
-    devDoc["manufacturer"] = "Sensirion";
-    devDoc["model"] = "SEN55";
-    devDoc["name"] = "Sensirion SEN55";
+    doc["uniq_id"] = String(ESP.getChipId()) + "_pm2p5";
+    doc["device"] = getDeviceInfo();
 
-    doc["device"] = devDoc;
-
-    publishMQTT(doc, discoveryTopic);
+    publishMQTT(doc, discoveryTopic, true);
 }
 
 void sendMQTTPm4p0DiscoveryMsg() {
     JsonDocument doc;
-    JsonDocument devDoc;
     String discoveryTopic = "homeassistant/sensor/env_sensor_" + String(sensorNumber) + "/pm4p0/config";
 
     doc["name"] = "Env " + String(sensorNumber) + " Pm4p0";
@@ -208,20 +213,14 @@ void sendMQTTPm4p0DiscoveryMsg() {
     doc["frc_upd"] = true;
     doc["val_tpl"] = "{{ value_json.pm4p0|default(0) }}";
 
-    doc["uniq_id"] = 2;
-    devDoc["identifiers"] = serialNumber;
-    devDoc["manufacturer"] = "Sensirion";
-    devDoc["model"] = "SEN55";
-    devDoc["name"] = "Sensirion SEN55";
+    doc["uniq_id"] = String(ESP.getChipId()) + "_pm4p0";;
+    doc["device"] = getDeviceInfo();
 
-    doc["device"] = devDoc;
-
-    publishMQTT(doc, discoveryTopic);
+    publishMQTT(doc, discoveryTopic, true);
 }
 
 void sendMQTTPm10p0DiscoveryMsg() {
     JsonDocument doc;
-    JsonDocument devDoc;
     String discoveryTopic = "homeassistant/sensor/env_sensor_" + String(sensorNumber) + "/pm10p0/config";
 
     doc["name"] = "Env " + String(sensorNumber) + " Pm10p0";
@@ -231,20 +230,14 @@ void sendMQTTPm10p0DiscoveryMsg() {
     doc["frc_upd"] = true;
     doc["val_tpl"] = "{{ value_json.pm10p0|default(0) }}";
 
-    doc["uniq_id"] = 3;
-    devDoc["identifiers"] = serialNumber;
-    devDoc["manufacturer"] = "Sensirion";
-    devDoc["model"] = "SEN55";
-    devDoc["name"] = "Sensirion SEN55";
+    doc["uniq_id"] = String(ESP.getChipId()) + "_pm10p0";;
+    doc["device"] = getDeviceInfo();
 
-    doc["device"] = devDoc;
-
-    publishMQTT(doc, discoveryTopic);
+    publishMQTT(doc, discoveryTopic, true);
 }
 
 void sendMQTTTemperatureDiscoveryMsg() {
     JsonDocument doc;
-    JsonDocument devDoc;
     String discoveryTopic = "homeassistant/sensor/env_sensor_" + String(sensorNumber) + "/temperature/config";
 
     doc["name"] = "Env " + String(sensorNumber) + " Temperature";
@@ -254,20 +247,14 @@ void sendMQTTTemperatureDiscoveryMsg() {
     doc["frc_upd"] = true;
     doc["val_tpl"] = "{{ value_json.temperature|default(0) }}";
 
-    doc["uniq_id"] = 4;
-    devDoc["identifiers"] = serialNumber;
-    devDoc["manufacturer"] = "Sensirion";
-    devDoc["model"] = "SEN55";
-    devDoc["name"] = "Sensirion SEN55";
+    doc["uniq_id"] = String(ESP.getChipId()) + "_temp";;
+    doc["device"] = getDeviceInfo();
 
-    doc["device"] = devDoc;
-
-    publishMQTT(doc, discoveryTopic);
+    publishMQTT(doc, discoveryTopic, true);
 }
 
 void sendMQTTHumidityDiscoveryMsg() {
     JsonDocument doc;
-    JsonDocument devDoc;
     String discoveryTopic = "homeassistant/sensor/env_sensor_" + String(sensorNumber) + "/humidity/config";
 
     doc["name"] = "Env " + String(sensorNumber) + " Humidity";
@@ -277,21 +264,15 @@ void sendMQTTHumidityDiscoveryMsg() {
     doc["frc_upd"] = true;
     doc["val_tpl"] = "{{ value_json.humidity|default(0) }}";
 
-    doc["uniq_id"] = 5;
-    devDoc["identifiers"] = serialNumber;
-    devDoc["manufacturer"] = "Sensirion";
-    devDoc["model"] = "SEN55";
-    devDoc["name"] = "Sensirion SEN55";
+    doc["uniq_id"] = String(ESP.getChipId()) + "_humid";
+    doc["device"] = getDeviceInfo();
 
-    doc["device"] = devDoc;
-
-    publishMQTT(doc, discoveryTopic);
+    publishMQTT(doc, discoveryTopic, true);
 }
 
 
 void sendMQTTVocIndexDiscoveryMsg() {
     JsonDocument doc;
-    JsonDocument devDoc;
     String discoveryTopic = "homeassistant/sensor/env_sensor_" + String(sensorNumber) + "/vocindex/config";
 
     doc["name"] = "Env " + String(sensorNumber) + " VocIndex";
@@ -301,21 +282,15 @@ void sendMQTTVocIndexDiscoveryMsg() {
     doc["frc_upd"] = true;
     doc["val_tpl"] = "{{ value_json.vocIndex|default(0) }}";
 
-    doc["uniq_id"] = 6;
-    devDoc["identifiers"] = serialNumber;
-    devDoc["manufacturer"] = "Sensirion";
-    devDoc["model"] = "SEN55";
-    devDoc["name"] = "Sensirion SEN55";
+    doc["uniq_id"] = String(ESP.getChipId()) + "_voci";
+    doc["device"] = getDeviceInfo();
 
-    doc["device"] = devDoc;
-
-    publishMQTT(doc, discoveryTopic);
+    publishMQTT(doc, discoveryTopic, true);
 }
 
 
 void sendMQTTNoxIndexDiscoveryMsg() {
     JsonDocument doc;
-    JsonDocument devDoc;
     String discoveryTopic = "homeassistant/sensor/env_sensor_" + String(sensorNumber) + "/noxindex/config";
 
     doc["name"] = "Env " + String(sensorNumber) + " NoxIndex";
@@ -325,15 +300,10 @@ void sendMQTTNoxIndexDiscoveryMsg() {
     doc["frc_upd"] = true;
     doc["val_tpl"] = "{{ value_json.noxIndex|default(0) }}";
 
-    doc["uniq_id"] = 7;
-    devDoc["identifiers"] = serialNumber;
-    devDoc["manufacturer"] = "Sensirion";
-    devDoc["model"] = "SEN55";
-    devDoc["name"] = "Sensirion SEN55";
+    doc["uniq_id"] = String(ESP.getChipId()) + "_noxi";;
+    doc["device"] = getDeviceInfo();
 
-    doc["device"] = devDoc;
-
-    publishMQTT(doc, discoveryTopic);
+    publishMQTT(doc, discoveryTopic, true);
 }
 
 
@@ -352,7 +322,7 @@ void sendMQTT(SensirionMeasurement data) {
     doc["vocIndex"] = data.vocIndex;
     doc["noxIndex"] = data.noxIndex;
 
-    publishMQTT(doc, stateTopic);
+    publishMQTT(doc, stateTopic, false);
 }
 
 
