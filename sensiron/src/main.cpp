@@ -160,7 +160,7 @@ String stateTopic = "environment/sensirion/garage";
 JsonDocument getDeviceInfo(){
     JsonDocument devDoc;
     devDoc["ids"] = serialNumber; //identifiers
-    devDoc["mf"] = "Sensirion"; //manufacturer
+    devDoc["mf"] = "Sham(Sensirion)"; //manufacturer
     devDoc["mdl"] = "SEN55";  //model
     devDoc["name"] = "Sensirion SEN55";
     devDoc["hw"] = hw_version; //hw_version
