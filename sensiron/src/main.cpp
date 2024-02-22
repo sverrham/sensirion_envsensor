@@ -34,9 +34,11 @@
 #include <SensirionI2CSen5x.h>
 #include <Wire.h>
 
-#include <ArduinoMqttClient.h>
+#include <MQTT.h>
 #include <WiFiManager.h>         // https://github.com/tzapu/WiFiManager
 #include <ArduinoJson.h>
+
+#include "mqtt_server.h"
 
 // The used commands use up to 48 bytes. On some Arduino's the default buffer
 // space is not large enough
@@ -138,7 +140,7 @@ struct SensirionMeasurement
 
 
 WiFiClient wifiClient;
-MqttClient mqttClient(wifiClient);
+MQTTClient mqttClient;
 
 
 void publishMQTT(JsonDocument doc, String topic_dev, bool retain) {
@@ -146,16 +148,17 @@ void publishMQTT(JsonDocument doc, String topic_dev, bool retain) {
     char jsonBuffer[512];
     serializeJson(doc, jsonBuffer);
     const char* payload = jsonBuffer;
-    mqttClient.beginMessage(topic_dev, retain=retain);
-    mqttClient.print(payload);
-    mqttClient.endMessage();
+    // mqttClient.beginMessage(topic_dev, retain=retain);
+    // mqttClient.print(payload);
+    // mqttClient.endMessage();
+    mqttClient.publish(topic_dev, payload);
     Serial.println("Published message: "+ topic_dev + String(payload));
 }
 
 // My numeric sensor ID, you can change this to whatever suits your needs
-int sensorNumber = 1;
+int sensorNumber = ESP.getChipId();
 // This is the topic this program will send the state of this device to.
-String stateTopic = "environment/sensirion/garage";
+String stateTopic = "environment/sensirion/technicalroom";
 
 JsonDocument getDeviceInfo(){
     JsonDocument devDoc;
@@ -328,11 +331,12 @@ void sendMQTT(SensirionMeasurement data) {
 
 void reconnectMQTT() {
 
-    const char broker[] = "adg";
-    int        port     = 1883;
+    //const char broker[] = "adg";
+    //int        port     = 1883;
+    const char *mac=WiFi.macAddress().c_str();
 
     if (!mqttClient.connected()) {
-        while (!mqttClient.connect(broker, port)) {
+        while (!mqttClient.connect(mac)) {
             delay (10000);
             Serial.println("MQTT Not Connected");
         }
@@ -442,6 +446,8 @@ void setup() {
         //if you get here you have connected to the WiFi    
         Serial.println("connected...yeey :)");
     }
+
+    mqttClient.begin(mqttServerIp, wifiClient);
 }
 
 
