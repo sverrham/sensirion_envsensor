@@ -39,6 +39,7 @@
 #include <ArduinoJson.h>
 
 #include "mqtt_server.h"
+#include "ha_discovery.h"
 
 // The used commands use up to 48 bytes. On some Arduino's the default buffer
 // space is not large enough
@@ -142,173 +143,17 @@ struct SensirionMeasurement
 WiFiClient wifiClient;
 MQTTClient mqttClient;
 
-
-void publishMQTT(JsonDocument doc, String topic_dev, bool retain) {
+void publishMQTT(JsonDocument doc, String topic_dev) {
     // Serialize the JSON document to a char buffer
     char jsonBuffer[512];
     serializeJson(doc, jsonBuffer);
     const char* payload = jsonBuffer;
-    // mqttClient.beginMessage(topic_dev, retain=retain);
-    // mqttClient.print(payload);
-    // mqttClient.endMessage();
     mqttClient.publish(topic_dev, payload);
     Serial.println("Published message: "+ topic_dev + String(payload));
 }
 
-// My numeric sensor ID, you can change this to whatever suits your needs
-int sensorNumber = ESP.getChipId();
 // This is the topic this program will send the state of this device to.
 String stateTopic = "environment/sensirion/technicalroom";
-
-JsonDocument getDeviceInfo(){
-    JsonDocument devDoc;
-    devDoc["ids"] = serialNumber; //identifiers
-    devDoc["mf"] = "Sham(Sensirion)"; //manufacturer
-    devDoc["mdl"] = "SEN55";  //model
-    devDoc["name"] = "Sensirion SEN55";
-    devDoc["hw"] = hw_version; //hw_version
-    devDoc["sw"] = sw_version; //sw_version
-
-    return devDoc;
-}
-
-void sendMQTTPm1p0DiscoveryMsg() {
-    JsonDocument doc;
-    String discoveryTopic = "homeassistant/sensor/env_sensor_" + String(sensorNumber) + "/pm1p0/config";
-
-    doc["name"] = "Env " + String(sensorNumber) + " Pm1p0";
-    doc["stat_t"]   = stateTopic;
-    doc["unit_of_meas"]   = "μg/mᵌ";
-    doc["sug_dsp_prc"] = 2; //         'suggested_display_precision',
-    doc["frc_upd"] = true;
-    doc["val_tpl"] = "{{ value_json.pm1p0|default(0) }}";
-    doc["uniq_id"] = String(ESP.getChipId()) + "_pm1p0";
-    doc["device"] = getDeviceInfo();
-
-    publishMQTT(doc, discoveryTopic, true);
-}
-
-void sendMQTTPm2p5DiscoveryMsg() {
-    JsonDocument doc;
-    String discoveryTopic = "homeassistant/sensor/env_sensor_" + String(sensorNumber) + "/pm2p5/config";
-
-    doc["name"] = "Env " + String(sensorNumber) + " Pm2p5";
-    doc["stat_t"]   = stateTopic;
-    doc["unit_of_meas"]   = "μg/mᵌ";
-    doc["sug_dsp_prc"] = 2; //         'suggested_display_precision',
-    doc["frc_upd"] = true;
-    doc["val_tpl"] = "{{ value_json.pm2p5|default(0) }}";
-
-    doc["uniq_id"] = String(ESP.getChipId()) + "_pm2p5";
-    doc["device"] = getDeviceInfo();
-
-    publishMQTT(doc, discoveryTopic, true);
-}
-
-void sendMQTTPm4p0DiscoveryMsg() {
-    JsonDocument doc;
-    String discoveryTopic = "homeassistant/sensor/env_sensor_" + String(sensorNumber) + "/pm4p0/config";
-
-    doc["name"] = "Env " + String(sensorNumber) + " Pm4p0";
-    doc["stat_t"]   = stateTopic;
-    doc["unit_of_meas"]   = "μg/mᵌ";
-    doc["sug_dsp_prc"] = 2; //         'suggested_display_precision',
-    doc["frc_upd"] = true;
-    doc["val_tpl"] = "{{ value_json.pm4p0|default(0) }}";
-
-    doc["uniq_id"] = String(ESP.getChipId()) + "_pm4p0";;
-    doc["device"] = getDeviceInfo();
-
-    publishMQTT(doc, discoveryTopic, true);
-}
-
-void sendMQTTPm10p0DiscoveryMsg() {
-    JsonDocument doc;
-    String discoveryTopic = "homeassistant/sensor/env_sensor_" + String(sensorNumber) + "/pm10p0/config";
-
-    doc["name"] = "Env " + String(sensorNumber) + " Pm10p0";
-    doc["stat_t"]   = stateTopic;
-    doc["unit_of_meas"]   = "μg/mᵌ";
-    doc["sug_dsp_prc"] = 2; //         'suggested_display_precision',
-    doc["frc_upd"] = true;
-    doc["val_tpl"] = "{{ value_json.pm10p0|default(0) }}";
-
-    doc["uniq_id"] = String(ESP.getChipId()) + "_pm10p0";;
-    doc["device"] = getDeviceInfo();
-
-    publishMQTT(doc, discoveryTopic, true);
-}
-
-void sendMQTTTemperatureDiscoveryMsg() {
-    JsonDocument doc;
-    String discoveryTopic = "homeassistant/sensor/env_sensor_" + String(sensorNumber) + "/temperature/config";
-
-    doc["name"] = "Env " + String(sensorNumber) + " Temperature";
-    doc["stat_t"]   = stateTopic;
-    doc["unit_of_meas"]   = "⁰C";
-    doc["sug_dsp_prc"] = 2; //         'suggested_display_precision',
-    doc["frc_upd"] = true;
-    doc["val_tpl"] = "{{ value_json.temperature|default(0) }}";
-
-    doc["uniq_id"] = String(ESP.getChipId()) + "_temp";;
-    doc["device"] = getDeviceInfo();
-
-    publishMQTT(doc, discoveryTopic, true);
-}
-
-void sendMQTTHumidityDiscoveryMsg() {
-    JsonDocument doc;
-    String discoveryTopic = "homeassistant/sensor/env_sensor_" + String(sensorNumber) + "/humidity/config";
-
-    doc["name"] = "Env " + String(sensorNumber) + " Humidity";
-    doc["stat_t"]   = stateTopic;
-    doc["unit_of_meas"]   = "%RH";
-    doc["sug_dsp_prc"] = 2; //         'suggested_display_precision',
-    doc["frc_upd"] = true;
-    doc["val_tpl"] = "{{ value_json.humidity|default(0) }}";
-
-    doc["uniq_id"] = String(ESP.getChipId()) + "_humid";
-    doc["device"] = getDeviceInfo();
-
-    publishMQTT(doc, discoveryTopic, true);
-}
-
-
-void sendMQTTVocIndexDiscoveryMsg() {
-    JsonDocument doc;
-    String discoveryTopic = "homeassistant/sensor/env_sensor_" + String(sensorNumber) + "/vocindex/config";
-
-    doc["name"] = "Env " + String(sensorNumber) + " VocIndex";
-    doc["stat_t"]   = stateTopic;
-    doc["unit_of_meas"]   = "";
-    // doc["sug_dsp_prc"] = 2; //         'suggested_display_precision',
-    doc["frc_upd"] = true;
-    doc["val_tpl"] = "{{ value_json.vocIndex|default(0) }}";
-
-    doc["uniq_id"] = String(ESP.getChipId()) + "_voci";
-    doc["device"] = getDeviceInfo();
-
-    publishMQTT(doc, discoveryTopic, true);
-}
-
-
-void sendMQTTNoxIndexDiscoveryMsg() {
-    JsonDocument doc;
-    String discoveryTopic = "homeassistant/sensor/env_sensor_" + String(sensorNumber) + "/noxindex/config";
-
-    doc["name"] = "Env " + String(sensorNumber) + " NoxIndex";
-    doc["stat_t"]   = stateTopic;
-    doc["unit_of_meas"]   = "";
-    // doc["sug_dsp_prc"] = 2; //         'suggested_display_precision',
-    doc["frc_upd"] = true;
-    doc["val_tpl"] = "{{ value_json.noxIndex|default(0) }}";
-
-    doc["uniq_id"] = String(ESP.getChipId()) + "_noxi";;
-    doc["device"] = getDeviceInfo();
-
-    publishMQTT(doc, discoveryTopic, true);
-}
-
 
 void sendMQTT(SensirionMeasurement data) {
     JsonDocument doc;
@@ -325,7 +170,7 @@ void sendMQTT(SensirionMeasurement data) {
     doc["vocIndex"] = data.vocIndex;
     doc["noxIndex"] = data.noxIndex;
 
-    publishMQTT(doc, stateTopic, false);
+    publishMQTT(doc, stateTopic);
 }
 
 
@@ -341,15 +186,19 @@ void reconnectMQTT() {
             Serial.println("MQTT Not Connected");
         }
         // Send discovery messages
-        sendMQTTPm1p0DiscoveryMsg();
-        sendMQTTPm2p5DiscoveryMsg();
-        sendMQTTPm4p0DiscoveryMsg();
-        sendMQTTPm10p0DiscoveryMsg();
-        sendMQTTTemperatureDiscoveryMsg();
-        sendMQTTHumidityDiscoveryMsg();
-        sendMQTTVocIndexDiscoveryMsg();
-        sendMQTTNoxIndexDiscoveryMsg();
+        HaDiscovery ha_discovery(stateTopic);
+        ha_discovery.setDeviceInfo(String((char*) serialNumber), hw_version, sw_version);
+        publishMQTT(ha_discovery.getMQTTPm1p0DiscoveryMsg(), ha_discovery.getDiscoveryTopicPm1p0());
+        publishMQTT(ha_discovery.getMQTTPm2p5DiscoveryMsg(), ha_discovery.getDiscoveryTopicPm2p5());
+        publishMQTT(ha_discovery.getMQTTPm4p0DiscoveryMsg(), ha_discovery.getDiscoveryTopicPm4p0());
+        publishMQTT(ha_discovery.getMQTTPm10p0DiscoveryMsg(), ha_discovery.getDiscoveryTopicPm10p0());
+        publishMQTT(ha_discovery.getMQTTTemperatureDiscoveryMsg(), ha_discovery.getDiscoveryTopicTemperature());
+        publishMQTT(ha_discovery.getMQTTHumidityDiscoveryMsg(), ha_discovery.getDiscoveryTopicHumidity());
+        publishMQTT(ha_discovery.getMQTTVocIndexDiscoveryMsg(), ha_discovery.getDiscoveryTopicVocindex());
+        publishMQTT(ha_discovery.getMQTTNoxIndexDiscoveryMsg(), ha_discovery.getDiscoveryTopicNoxindex());
+
     }
+    
     Serial.println("MQTT Connected");
 }
 
