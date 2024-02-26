@@ -1,3 +1,5 @@
+[![PlatformIO CI](https://github.com/sverrham/sensirion_envsensor/actions/workflows/platformio.yaml/badge.svg)](https://github.com/sverrham/sensirion_envsensor/actions/workflows/platformio.yaml)
+
 # Sensirion environmental sensor
 Sensirion environment sensor project
 
