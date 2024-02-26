@@ -34,12 +34,21 @@
 #include <SensirionI2CSen5x.h>
 #include <Wire.h>
 
-#include <MQTT.h>
-#include <WiFiManager.h>         // https://github.com/tzapu/WiFiManager
+#include <PubSubClient.h>
+#include <ESPAsyncWiFiManager.h>         // https://github.com/tzapu/WiFiManager
 #include <ArduinoJson.h>
+#include <ESPAsyncWebServer.h>
 
 #include "mqtt_server.h"
 #include "ha_discovery.h"
+
+AsyncWebServer server(80);
+DNSServer dns;
+
+void notFound(AsyncWebServerRequest *request) {
+    request->send(404, "text/plain", "Not found");
+}
+
 
 // The used commands use up to 48 bytes. On some Arduino's the default buffer
 // space is not large enough
@@ -141,19 +150,21 @@ struct SensirionMeasurement
 
 
 WiFiClient wifiClient;
-MQTTClient mqttClient;
+PubSubClient mqttClient(mqttServerIp, 1883, wifiClient);
 
 void publishMQTT(JsonDocument doc, String topic_dev) {
     // Serialize the JSON document to a char buffer
     char jsonBuffer[512];
-    serializeJson(doc, jsonBuffer);
+    size_t n = serializeJson(doc, jsonBuffer);
     const char* payload = jsonBuffer;
-    mqttClient.publish(topic_dev, payload);
+    mqttClient.publish(topic_dev.c_str(), jsonBuffer, n);
     Serial.println("Published message: "+ topic_dev + String(payload));
 }
 
 // This is the topic this program will send the state of this device to.
 String stateTopic = "environment/sensirion/technicalroom";
+
+JsonDocument sensordata;
 
 void sendMQTT(SensirionMeasurement data) {
     JsonDocument doc;
@@ -171,19 +182,18 @@ void sendMQTT(SensirionMeasurement data) {
     doc["noxIndex"] = data.noxIndex;
 
     publishMQTT(doc, stateTopic);
+    
+    sensordata = doc;
 }
-
 
 void reconnectMQTT() {
 
-    //const char broker[] = "adg";
-    //int        port     = 1883;
     const char *mac=WiFi.macAddress().c_str();
 
     if (!mqttClient.connected()) {
         while (!mqttClient.connect(mac)) {
-            delay (10000);
             Serial.println("MQTT Not Connected");
+            delay (10000);
         }
         // Send discovery messages
         HaDiscovery ha_discovery(stateTopic);
@@ -198,7 +208,6 @@ void reconnectMQTT() {
         publishMQTT(ha_discovery.getMQTTNoxIndexDiscoveryMsg(), ha_discovery.getDiscoveryTopicNoxindex());
 
     }
-    
     Serial.println("MQTT Connected");
 }
 
@@ -271,7 +280,7 @@ void setup() {
     // it is a good practice to make sure your code sets wifi mode how you want it.
     
     //WiFiManager, Local intialization. Once its business is done, there is no need to keep it around
-    WiFiManager wm;
+    AsyncWiFiManager wm(&server,&dns);
 
     // reset settings - wipe stored credentials for testing
     // these are stored by the esp library
@@ -296,7 +305,18 @@ void setup() {
         Serial.println("connected...yeey :)");
     }
 
-    mqttClient.begin(mqttServerIp, wifiClient);
+    mqttClient.setBufferSize(512);
+    
+    server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
+        request->send(200, "text/plain", "Hello, world");
+    });
+    server.on("/data", HTTP_GET, [](AsyncWebServerRequest *request) {
+        String response;
+        serializeJson(sensordata, response);
+        request->send(200, "application/json", response);
+    });
+    server.onNotFound(notFound);
+    server.begin();
 }
 
 
@@ -304,61 +324,69 @@ void loop() {
     uint16_t error;
     char errorMessage[256];
 
-    delay(10000);
+    mqttClient.loop();
 
-    reconnectMQTT();
+    static unsigned long previousMillis = 0;
+    unsigned long currentMillis = millis();
 
-    SensirionMeasurement data;
+    if (currentMillis - previousMillis >= 10000) {
+        //restart this TIMER
+        previousMillis = currentMillis;
 
-    error = sen5x.readMeasuredValues(
-        data.massConcentrationPm1p0, data.massConcentrationPm2p5, data.massConcentrationPm4p0,
-        data.massConcentrationPm10p0, data.ambientHumidity, data.ambientTemperature, data.vocIndex,
-        data.noxIndex);
+        reconnectMQTT();
 
-    if (error) {
-        Serial.print("Error trying to execute readMeasuredValues(): ");
-        errorToString(error, errorMessage, 256);
-        Serial.println(errorMessage);
-    } else {
-        sendMQTT(data);
-        Serial.print("MassConcentrationPm1p0:");
-        Serial.print(data.massConcentrationPm1p0);
-        Serial.print("\t");
-        Serial.print("MassConcentrationPm2p5:");
-        Serial.print(data.massConcentrationPm2p5);
-        Serial.print("\t");
-        Serial.print("MassConcentrationPm4p0:");
-        Serial.print(data.massConcentrationPm4p0);
-        Serial.print("\t");
-        Serial.print("MassConcentrationPm10p0:");
-        Serial.print(data.massConcentrationPm10p0);
-        Serial.print("\t");
-        Serial.print("AmbientHumidity:");
-        if (isnan(data.ambientHumidity)) {
-            Serial.print("n/a");
+        SensirionMeasurement data;
+
+        error = sen5x.readMeasuredValues(
+            data.massConcentrationPm1p0, data.massConcentrationPm2p5, data.massConcentrationPm4p0,
+            data.massConcentrationPm10p0, data.ambientHumidity, data.ambientTemperature, data.vocIndex,
+            data.noxIndex);
+
+        if (error) {
+            Serial.print("Error trying to execute readMeasuredValues(): ");
+            errorToString(error, errorMessage, 256);
+            Serial.println(errorMessage);
         } else {
-            Serial.print(data.ambientHumidity);
-        }
-        Serial.print("\t");
-        Serial.print("AmbientTemperature:");
-        if (isnan(data.ambientTemperature)) {
-            Serial.print("n/a");
-        } else {
-            Serial.print(data.ambientTemperature);
-        }
-        Serial.print("\t");
-        Serial.print("VocIndex:");
-        if (isnan(data.vocIndex)) {
-            Serial.print("n/a");
-        } else {
-            Serial.print(data.vocIndex);
-        }
-        Serial.print("\t");
-        Serial.print("NoxIndex:");
-        if (isnan(data.noxIndex)) {
-            Serial.println("n/a");
-        } else {
-            Serial.println(data.noxIndex);
+            sendMQTT(data);
+            Serial.print("MassConcentrationPm1p0:");
+            Serial.print(data.massConcentrationPm1p0);
+            Serial.print("\t");
+            Serial.print("MassConcentrationPm2p5:");
+            Serial.print(data.massConcentrationPm2p5);
+            Serial.print("\t");
+            Serial.print("MassConcentrationPm4p0:");
+            Serial.print(data.massConcentrationPm4p0);
+            Serial.print("\t");
+            Serial.print("MassConcentrationPm10p0:");
+            Serial.print(data.massConcentrationPm10p0);
+            Serial.print("\t");
+            Serial.print("AmbientHumidity:");
+            if (isnan(data.ambientHumidity)) {
+                Serial.print("n/a");
+            } else {
+                Serial.print(data.ambientHumidity);
+            }
+            Serial.print("\t");
+            Serial.print("AmbientTemperature:");
+            if (isnan(data.ambientTemperature)) {
+                Serial.print("n/a");
+            } else {
+                Serial.print(data.ambientTemperature);
+            }
+            Serial.print("\t");
+            Serial.print("VocIndex:");
+            if (isnan(data.vocIndex)) {
+                Serial.print("n/a");
+            } else {
+                Serial.print(data.vocIndex);
+            }
+            Serial.print("\t");
+            Serial.print("NoxIndex:");
+            if (isnan(data.noxIndex)) {
+                Serial.println("n/a");
+            } else {
+                Serial.println(data.noxIndex);
+            }
         }
     }
 }
