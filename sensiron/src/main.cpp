@@ -45,8 +45,54 @@
 AsyncWebServer server(80);
 DNSServer dns;
 
+
+SensirionI2CSen5x sen5x;
+unsigned char serialNumber[32];
+String hw_version;
+String sw_version;
+JsonDocument sensordata;
+
+WiFiClient wifiClient;
+PubSubClient mqttClient(mqttServerIp, mqttServerPort, wifiClient);
+
+// This is the topic this program will send the state of this device to.
+String stateTopic = "environment/sensirion/technicalroom";
+
+
 void notFound(AsyncWebServerRequest *request) {
     request->send(404, "text/plain", "Not found");
+}
+
+const char* TOPIC_MESSAGE = "Mqtt topic";
+const char* SERVER_IP_MESSAGE = "Mqtt Server";
+const char* SERVER_PORT_MESSAGE = "Mqtt port";
+
+String genHtml(String stateTopic, String mqttServerIp, String mqttServerPort) {
+    String html;
+    html = R"rawliteral(
+<!DOCTYPE HTML><html><head>
+  <title>Environmental Sensor</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  </head><body>
+  <form action="/get">
+    <input type="text" name="Mqtt topic">
+    <label for="Mqtt topic"> MQTT Topic</label><br>
+    <input type="text" name="Mqtt Server">
+    <label for="Mqtt Server"> MQTT Server IP</label><br>
+    <input type="text" name="Mqtt port">
+    <label for="Mqtt port"> MQTT Server Port</label><br>
+    <input type="checkbox" name="mqtt_enabled" value="Boat" checked>
+    <label for="mqtt_enabled"> MQTT Enabled</label><br><br>
+    <input type="submit" value="Submit">
+  </form><br>
+)rawliteral";
+    html += "<h1 class=\"label\">MQTT Config</h1>";
+    html += "MQTT Topic: " + stateTopic + "<br>";
+    html += "MQTT Server: " + mqttServerIp + "<br>";
+    html += "MQTT Port: " + mqttServerPort + "<br>";
+    html += "</body></html>";
+
+    return html;
 }
 
 
@@ -60,10 +106,6 @@ void notFound(AsyncWebServerRequest *request) {
 #define USE_PRODUCT_INFO
 #endif
 
-SensirionI2CSen5x sen5x;
-
-String hw_version;
-String sw_version;
 
 void printModuleVersions() {
     uint16_t error;
@@ -116,7 +158,6 @@ void printModuleVersions() {
     }
 }
 
-unsigned char serialNumber[32];
 
 void printSerialNumber() {
     uint16_t error;
@@ -149,9 +190,6 @@ struct SensirionMeasurement
 };
 
 
-WiFiClient wifiClient;
-PubSubClient mqttClient(mqttServerIp, 1883, wifiClient);
-
 void publishMQTT(JsonDocument doc, String topic_dev) {
     // Serialize the JSON document to a char buffer
     char jsonBuffer[512];
@@ -160,11 +198,6 @@ void publishMQTT(JsonDocument doc, String topic_dev) {
     mqttClient.publish(topic_dev.c_str(), jsonBuffer, n);
     Serial.println("Published message: "+ topic_dev + String(payload));
 }
-
-// This is the topic this program will send the state of this device to.
-String stateTopic = "environment/sensirion/technicalroom";
-
-JsonDocument sensordata;
 
 void sendMQTT(SensirionMeasurement data) {
     JsonDocument doc;
@@ -307,13 +340,31 @@ void setup() {
     mqttClient.setBufferSize(512);
     
     server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
-        request->send(200, "text/plain", "Hello, world");
+        request->send(200, "text/html", genHtml(stateTopic, mqttServerIp, String(mqttServerPort)));
     });
+    // Send a GET request to <IP>/get?message=<message>
+    server.on("/get", HTTP_GET, [] (AsyncWebServerRequest *request) {
+        String topic = stateTopic;
+        String server_ip = mqttServerIp;
+        int server_port = mqttServerPort;
+        if (request->hasParam(TOPIC_MESSAGE)) {
+            topic = request->getParam(TOPIC_MESSAGE)->value();
+        } 
+        if (request->hasParam(SERVER_IP_MESSAGE)) {
+            server_ip = request->getParam(SERVER_IP_MESSAGE)->value();
+        }
+        if (request->hasParam(SERVER_PORT_MESSAGE)) {
+            server_port = atoi(request->getParam(SERVER_PORT_MESSAGE)->value().c_str());
+        }
+        request->send(200, "text/html", genHtml(topic, server_ip, String(server_port)));
+    });
+    
     server.on("/data", HTTP_GET, [](AsyncWebServerRequest *request) {
         String response;
         serializeJson(sensordata, response);
         request->send(200, "application/json", response);
     });
+
     server.onNotFound(notFound);
     server.begin();
 }
