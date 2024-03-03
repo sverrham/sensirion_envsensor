@@ -187,13 +187,12 @@ void sendMQTT(SensirionMeasurement data) {
 }
 
 void reconnectMQTT() {
-
-    const char *mac=WiFi.macAddress().c_str();
+    String mac_addr = WiFi.macAddress();
 
     if (!mqttClient.connected()) {
-        while (!mqttClient.connect(mac)) {
+        while (!mqttClient.connect(mac_addr.c_str())) {
             Serial.println("MQTT Not Connected");
-            delay (10000);
+            delay (1000);
         }
         // Send discovery messages
         HaDiscovery ha_discovery(stateTopic);
