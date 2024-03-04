@@ -69,27 +69,26 @@ const char* SERVER_PORT_MESSAGE = "Mqtt port";
 
 String genHtml(String stateTopic, String mqttServerIp, String mqttServerPort) {
     String html;
-    html = R"rawliteral(
-<!DOCTYPE HTML><html><head>
-  <title>Environmental Sensor</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  </head><body>
-  <form action="/get">
-    <input type="text" name="Mqtt topic">
-    <label for="Mqtt topic"> MQTT Topic</label><br>
-    <input type="text" name="Mqtt Server">
-    <label for="Mqtt Server"> MQTT Server IP</label><br>
-    <input type="text" name="Mqtt port">
-    <label for="Mqtt port"> MQTT Server Port</label><br>
-    <input type="checkbox" name="mqtt_enabled" value="Boat" checked>
-    <label for="mqtt_enabled"> MQTT Enabled</label><br><br>
-    <input type="submit" value="Submit">
-  </form><br>
-)rawliteral";
+    html += R"(<!DOCTYPE HTML><html><head>)";
+    html += R"(<title>Environmental Sensor</title>)";
+    html += R"(<meta name="viewport" content="width=device-width, initial-scale=1">)";
+    html += R"(</head><body>)";
+    html += R"(<form action="/get">)";
+    html += R"(<input type="text" name="Mqtt topic" value=")" + stateTopic + R"(">)";
+    html += R"(<label for="Mqtt topic"> MQTT Topic</label><br>)";
+    html += R"(<input type="text" name="Mqtt Server" value=")" + mqttServerIp + R"(">)";
+    html += R"(<label for="Mqtt Server"> MQTT Server IP</label><br>)";
+    html += R"(<input type="text" name="Mqtt port" value=")" + mqttServerPort + R"(">)";
+    html += R"(<label for="Mqtt port"> MQTT Server Port</label><br>)";
+    html += R"(<input type="checkbox" name="mqtt_enabled" value="Boat" checked>)";
+    html += R"(<label for="mqtt_enabled"> MQTT Enabled</label><br><br>)";
+    html += R"(<input type="submit" value="Submit">)";
+    html += R"(</form><br>)";
     html += "<h1 class=\"label\">MQTT Config</h1>";
     html += "MQTT Topic: " + stateTopic + "<br>";
     html += "MQTT Server: " + mqttServerIp + "<br>";
     html += "MQTT Port: " + mqttServerPort + "<br>";
+    html += R"(<p><a href="/data">Json sensor data</a></p><br>)";
     html += "</body></html>";
 
     return html;
