@@ -39,8 +39,12 @@
 #include <ArduinoJson.h>
 #include <ESPAsyncWebServer.h>
 
+#include <Preferences.h>
+
 #include "mqtt_server.h"
 #include "ha_discovery.h"
+
+Preferences prefs;
 
 AsyncWebServer server(80);
 DNSServer dns;
@@ -57,6 +61,9 @@ PubSubClient mqttClient(mqttServerIp, mqttServerPort, wifiClient);
 
 // This is the topic this program will send the state of this device to.
 String stateTopic = "environment/sensirion/technicalroom";
+String mqqtTopic;
+String mqttServerIpAddr;
+int mqttServerPortTest;
 
 
 void notFound(AsyncWebServerRequest *request) {
@@ -337,9 +344,14 @@ void setup() {
     }
 
     mqttClient.setBufferSize(512);
-    
+
+    prefs.begin("Sensirion Sensor");
+    mqqtTopic = prefs.getString("mqttStateTopic", "environment/sensirion");
+    mqttServerIpAddr = prefs.getString("mqttServerIp", "192.168.1.10");
+    mqttServerPortTest = prefs.getInt("mqttServerPort", 1883);
+
     server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
-        request->send(200, "text/html", genHtml(stateTopic, mqttServerIp, String(mqttServerPort)));
+        request->send(200, "text/html", genHtml(mqqtTopic, mqttServerIpAddr.c_str(), String(mqttServerPort)));
     });
     // Send a GET request to <IP>/get?message=<message>
     server.on("/get", HTTP_GET, [] (AsyncWebServerRequest *request) {
@@ -348,12 +360,18 @@ void setup() {
         int server_port = mqttServerPort;
         if (request->hasParam(TOPIC_MESSAGE)) {
             topic = request->getParam(TOPIC_MESSAGE)->value();
+            mqqtTopic = topic;
+            prefs.putString("mqttStateTopic", topic);
         } 
         if (request->hasParam(SERVER_IP_MESSAGE)) {
             server_ip = request->getParam(SERVER_IP_MESSAGE)->value();
+            mqttServerIpAddr = server_ip;
+            prefs.putString("mqttServerIp", mqttServerIpAddr);
         }
         if (request->hasParam(SERVER_PORT_MESSAGE)) {
             server_port = atoi(request->getParam(SERVER_PORT_MESSAGE)->value().c_str());
+            mqttServerPortTest = server_port;
+            prefs.putInt("mqttServerPort", mqttServerPortTest);
         }
         request->send(200, "text/html", genHtml(topic, server_ip, String(server_port)));
     });
