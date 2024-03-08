@@ -41,7 +41,6 @@
 
 #include <Preferences.h>
 
-#include "mqtt_server.h"
 #include "ha_discovery.h"
 
 Preferences prefs;
@@ -57,13 +56,13 @@ String sw_version;
 JsonDocument sensordata;
 
 WiFiClient wifiClient;
-PubSubClient mqttClient(mqttServerIp, mqttServerPort, wifiClient);
+PubSubClient mqttClient(wifiClient);
 
 // This is the topic this program will send the state of this device to.
-String stateTopic = "environment/sensirion/technicalroom";
-String mqqtTopic;
-String mqttServerIpAddr;
-int mqttServerPortTest;
+String stateTopic;
+String mqttServerIp;
+int mqttServerPort;
+boolean mqttEnabled;
 
 
 void notFound(AsyncWebServerRequest *request) {
@@ -73,8 +72,9 @@ void notFound(AsyncWebServerRequest *request) {
 const char* TOPIC_MESSAGE = "Mqtt topic";
 const char* SERVER_IP_MESSAGE = "Mqtt Server";
 const char* SERVER_PORT_MESSAGE = "Mqtt port";
+const char* MQTT_ENABLED_MESSAGE = "mqtt_enabled";
 
-String genHtml(String stateTopic, String mqttServerIp, String mqttServerPort) {
+String genHtml(String stateTopic, String mqttServerIp, String mqttServerPort, bool mqttEnabled) {
     String html;
     html += R"(<!DOCTYPE HTML><html><head>)";
     html += R"(<title>Environmental Sensor</title>)";
@@ -87,7 +87,12 @@ String genHtml(String stateTopic, String mqttServerIp, String mqttServerPort) {
     html += R"(<label for="Mqtt Server"> MQTT Server IP</label><br>)";
     html += R"(<input type="text" name="Mqtt port" value=")" + mqttServerPort + R"(">)";
     html += R"(<label for="Mqtt port"> MQTT Server Port</label><br>)";
-    html += R"(<input type="checkbox" name="mqtt_enabled" value="Boat" checked>)";
+    // html += R"(<input type='hidden' value='No' name='mqtt_enabled'>)"; //Hiden value to send No if the checkbox is not sent.
+    if (mqttEnabled) {
+        html += R"(<input type="checkbox" name="mqtt_enabled" value="Yes" checked>)";
+    } else {
+        html += R"(<input type="checkbox" name="mqtt_enabled" value="Yes">)";
+    }
     html += R"(<label for="mqtt_enabled"> MQTT Enabled</label><br><br>)";
     html += R"(<input type="submit" value="Submit">)";
     html += R"(</form><br>)";
@@ -95,6 +100,8 @@ String genHtml(String stateTopic, String mqttServerIp, String mqttServerPort) {
     html += "MQTT Topic: " + stateTopic + "<br>";
     html += "MQTT Server: " + mqttServerIp + "<br>";
     html += "MQTT Port: " + mqttServerPort + "<br>";
+    String enabled = mqttEnabled ? "Yes" : "No";
+    html += "MQTT Enabled: " + enabled + "<br>";
     html += R"(<p><a href="/data">Json sensor data</a></p><br>)";
     html += "</body></html>";
 
@@ -229,6 +236,7 @@ void reconnectMQTT() {
     String mac_addr = WiFi.macAddress();
 
     if (!mqttClient.connected()) {
+        mqttClient.setServer(mqttServerIp.c_str(), mqttServerPort);
         while (!mqttClient.connect(mac_addr.c_str())) {
             Serial.println("MQTT Not Connected");
             delay (1000);
@@ -346,34 +354,37 @@ void setup() {
     mqttClient.setBufferSize(512);
 
     prefs.begin("Sensirion Sensor");
-    mqqtTopic = prefs.getString("mqttStateTopic", "environment/sensirion");
-    mqttServerIpAddr = prefs.getString("mqttServerIp", "192.168.1.10");
-    mqttServerPortTest = prefs.getInt("mqttServerPort", 1883);
+    stateTopic = prefs.getString("mqttStateTopic", "environment/sensirion");
+    mqttServerIp = prefs.getString("mqttServerIp", "192.168.1.10");
+    mqttServerPort = prefs.getInt("mqttServerPort", 1883);
+    mqttEnabled = prefs.getBool("mqttEnabled", true);
 
     server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
-        request->send(200, "text/html", genHtml(mqqtTopic, mqttServerIpAddr.c_str(), String(mqttServerPort)));
+        request->send(200, "text/html", genHtml(stateTopic, mqttServerIp.c_str(), String(mqttServerPort), mqttEnabled));
     });
     // Send a GET request to <IP>/get?message=<message>
     server.on("/get", HTTP_GET, [] (AsyncWebServerRequest *request) {
         String topic = stateTopic;
-        String server_ip = mqttServerIp;
-        int server_port = mqttServerPort;
+        mqttEnabled = false;
         if (request->hasParam(TOPIC_MESSAGE)) {
             topic = request->getParam(TOPIC_MESSAGE)->value();
-            mqqtTopic = topic;
+            stateTopic = topic;
             prefs.putString("mqttStateTopic", topic);
         } 
         if (request->hasParam(SERVER_IP_MESSAGE)) {
-            server_ip = request->getParam(SERVER_IP_MESSAGE)->value();
-            mqttServerIpAddr = server_ip;
-            prefs.putString("mqttServerIp", mqttServerIpAddr);
+            mqttServerIp = request->getParam(SERVER_IP_MESSAGE)->value();
+            prefs.putString("mqttServerIp", mqttServerIp);
         }
         if (request->hasParam(SERVER_PORT_MESSAGE)) {
-            server_port = atoi(request->getParam(SERVER_PORT_MESSAGE)->value().c_str());
-            mqttServerPortTest = server_port;
-            prefs.putInt("mqttServerPort", mqttServerPortTest);
+            mqttServerPort = atoi(request->getParam(SERVER_PORT_MESSAGE)->value().c_str());
+            prefs.putInt("mqttServerPort", mqttServerPort);
         }
-        request->send(200, "text/html", genHtml(topic, server_ip, String(server_port)));
+        if (request->hasParam(MQTT_ENABLED_MESSAGE)) {
+            mqttEnabled = request->getParam(MQTT_ENABLED_MESSAGE)->value() == "Yes";
+        }
+        prefs.putBool("mqttEnabled", mqttEnabled); // Always write this to catch the Enable checkbox not checked also.
+        
+        request->send(200, "text/html", genHtml(topic, mqttServerIp, String(mqttServerPort), mqttEnabled));
     });
     
     server.on("/data", HTTP_GET, [](AsyncWebServerRequest *request) {
@@ -391,7 +402,9 @@ void loop() {
     uint16_t error;
     char errorMessage[256];
 
-    mqttClient.loop();
+    if (mqttEnabled) {
+        mqttClient.loop();
+    }
 
     static unsigned long previousMillis = 0;
     unsigned long currentMillis = millis();
@@ -400,7 +413,9 @@ void loop() {
         //restart this TIMER
         previousMillis = currentMillis;
 
-        reconnectMQTT();
+        if (mqttEnabled) {
+            reconnectMQTT();
+        }
 
         SensirionMeasurement data;
 
@@ -414,7 +429,9 @@ void loop() {
             errorToString(error, errorMessage, 256);
             Serial.println(errorMessage);
         } else {
-            sendMQTT(data);
+            if (mqttEnabled) {
+                sendMQTT(data);
+            }
             Serial.print("MassConcentrationPm1p0:");
             Serial.print(data.massConcentrationPm1p0);
             Serial.print("\t");
