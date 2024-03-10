@@ -30,7 +30,7 @@ struct SensirionMeasurement
 
 void sen5xSetup();
 SensirionMeasurement readSen5xData();
-String getSen5xtSerial();
+String getSen5xSerialNumber();
 String getSen5xHwVersion();
 String getSen5xSwVersion();
 

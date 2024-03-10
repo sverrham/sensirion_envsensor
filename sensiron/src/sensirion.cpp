@@ -38,7 +38,7 @@ unsigned char serialNumber[32];
 String hw_version;
 String sw_version;
 
-String getSen5xtSerial() {
+String getSen5xSerialNumber() {
 
     return String((char*) serialNumber);
 }

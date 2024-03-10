@@ -114,7 +114,7 @@ void reconnectMQTT() {
         }
         // Send discovery messages
         HaDiscovery ha_discovery(stateTopic);
-        ha_discovery.setDeviceInfo(getSen5xtSerial(), getSen5xHwVersion(), getSen5xSwVersion());
+        ha_discovery.setDeviceInfo(getSen5xSerialNumber(), getSen5xHwVersion(), getSen5xSwVersion());
         publishMQTT(ha_discovery.getMQTTPm1p0DiscoveryMsg(), ha_discovery.getDiscoveryTopicPm1p0());
         publishMQTT(ha_discovery.getMQTTPm2p5DiscoveryMsg(), ha_discovery.getDiscoveryTopicPm2p5());
         publishMQTT(ha_discovery.getMQTTPm4p0DiscoveryMsg(), ha_discovery.getDiscoveryTopicPm4p0());
